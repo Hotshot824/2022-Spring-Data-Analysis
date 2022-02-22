@@ -50,7 +50,7 @@ myobj = {"name":"John", "age":30.5, "cars":{'1':["Frd",22], 2:["BMW",24]}, 2.3:[
   Key : '2.3' value : is a List [{15, 16},(77, 88, "77")] {15, 16} is a Set
 ```
 
-## (5).	For indexing lst[i] and slicing lst[a: b: s], what are the ranges of i and a, b, and s? What are the default values of a, b, and s? Use slicing to reverse a list.
+## (5).	For indexing `lst[i]` and slicing `lst[a:b:s]`, what are the ranges of i and a, b, and s? What are the default values of a, b, and s? Use slicing to reverse a list.
 
 ```
 ```
