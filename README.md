@@ -56,4 +56,31 @@ myobj = {"name":"John", "age":30.5, "cars":{'1':["Frd",22], 2:["BMW",24]}, 2.3:[
 ```
 
 
+## (6).	What is the main difference between "list" and "ndarray"?
+
+## (7).	Show the print results.
+```
+lst = [1,2,3]
+nda = np.array([1, 2, 3])
+print(type(lst)) #
+print(type(nda)) #
+print(lst*3)     #
+print(nda*3)     #
+```
+
+## (8).	What is the difference of “alias copy”, “shallow copy”, and “deep copy” for both list and ndarray? What is these mechanism for?
+
+## (9).	What are the 3 looping mechanisms for programming languages. Claim when to use. What we have in Python?
+
+## (10).	Write a subroutine 【lst = fibon(m, n)】 to output a "list" of Fibonancci numbers between m and n (n not included). Use simple code to call the subroutine.
+```
+input:  m, n (integers)
+output: lst  (list)
+Give comments for the code and explain your reults are correct.
+Fibonancci numbers: 0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, ...
+Example: lst = fibon(6, 34) # lst is [8, 13, 21]
+```
+
+## Python's design philosophy emphasizes code readability with use of significant indentation. 
+
 
