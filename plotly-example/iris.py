@@ -1,9 +1,9 @@
 import plotly.express as px
-import irisBasic
+import irisBasic as iris
 
 def main():
-    df = px.data.iris()
-    irisBasic.saveData(df)
+    iris.trendlines()
+    
 
 if __name__ == '__main__':
     main()
