@@ -1,3 +1,4 @@
+from re import X
 import sys
 import warnings
 
@@ -6,7 +7,6 @@ if not sys.warnoptions:
 
 import tensorflow as tf
 import numpy as np
-import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
@@ -16,27 +16,10 @@ from tqdm import tqdm
 sns.set()
 tf.compat.v1.random.set_random_seed(1234)
 
-df = pd.read_csv('./GOOG_2020.csv')
-df.head()
+import time
+import plotly.express as px
+import plotly.graph_objects as go
 
-#數據歸一化
-minmax = MinMaxScaler().fit(df.iloc[:, 4:5].astype('float32')) # Close index
-df_log = minmax.transform(df.iloc[:, 4:5].astype('float32')) # Close index
-df_log = pd.DataFrame(df_log)
-df_log.head()
-
-# print(df.head())
-# print(df_log.head())
-
-#Split train and test dataset
-test_size = 30
-simulation_size = 10
-
-df_train = df_log.iloc[:-test_size]
-df_test = df_log.iloc[-test_size:]
-df.shape, df_train.shape, df_test.shape
-
-#Model
 class Model:
     def __init__(
         self,
@@ -86,19 +69,6 @@ def anchor(signal, weight):
         last = smoothed_val
     return buffer
 
-simulation_size = 10
-num_layers = 1
-size_layer = 128
-timestamp = 5
-epoch = 300
-dropout_rate = 0.8
-test_size = 30
-learning_rate = 0.01
-
-df_train = df_log
-df.shape, df_train.shape
-
-#Forecast
 def forecast():
     tf.reset_default_graph()
     modelnn = Model(
@@ -183,38 +153,75 @@ def forecast():
     
     return deep_future
 
-results = []
-for i in range(simulation_size):
-    print('simulation %d'%(i + 1))
-    results.append(forecast())
+def getTime():
+    localtime = time.localtime()
+    return time.strftime("%Y-%m-%d-%H-%M-%S", localtime)
 
-date_ori = pd.to_datetime(df.iloc[:, 0]).tolist()
-for i in range(test_size):
-    date_ori.append(date_ori[-1] + timedelta(days = 1))
-date_ori = pd.Series(date_ori).dt.strftime(date_format = '%Y-%m-%d').tolist()
-date_ori[-5:]
+def listRange(s, r):
+    result = []
+    s += 1
+    for i in range(r):
+        result.append(s+i)
+    return result
 
-accepted_results = []
-for r in results:
-    if (np.array(r[-test_size:]) < np.min(df['Close'])).sum() == 0 and \
-    (np.array(r[-test_size:]) > np.max(df['Close']) * 2).sum() == 0:
-        accepted_results.append(r)
-len(accepted_results)
+if __name__ == '__main__':
 
-accuracies = [calculate_accuracy(df['Close'].values, r[:-test_size]) for r in accepted_results]
+    df = pd.read_csv('./GOOG_2020.csv')
+    df['index'] = df.index
+    # print(df.head())
 
-plt.figure(figsize = (15, 5))
-for no, r in enumerate(accepted_results):
-    plt.plot(r, label = 'forecast %d'%(no + 1))
+    minmax = MinMaxScaler().fit(df.iloc[:, 4:5].astype('float32')) # Close index
+    df_log = minmax.transform(df.iloc[:, 4:5].astype('float32')) # Close index
+    df_log = pd.DataFrame(df_log)
+    # print(df_log.head())
 
-tureDf = pd.read_csv('./GOOG_2020_true.csv')
-tureDf.head()
 
-plt.plot(tureDf['Close'], label = 'true trend', c = 'black')
-plt.legend()
-plt.title('average accuracy: %.4f'%(np.mean(accuracies)))
+    simulation_size = 5
+    num_layers = 1
+    size_layer = 128
+    timestamp = 5
+    epoch = 10
+    dropout_rate = 0.8
+    test_size = 30
+    learning_rate = 0.01
 
-x_range_future = np.arange(len(results[0]))
-plt.xticks(x_range_future[::30], date_ori[::30])
-plt.show()
-plt.savefig("results_lstm_2020.png")
+    df_train = df_log
+    df.shape, df_train.shape
+
+    results = []
+    for i in range(simulation_size):
+        print('simulation %d'%(i + 1))
+        results.append(forecast())
+
+    date_ori = pd.to_datetime(df.iloc[:, 0]).tolist()
+    for i in range(test_size):
+        date_ori.append(date_ori[-1] + timedelta(days = 1))
+    date_ori = pd.Series(date_ori).dt.strftime(date_format = '%Y-%m-%d').tolist()
+    date_ori[-5:]
+
+    accepted_results = []
+    for r in results:
+        if (np.array(r[-test_size:]) < np.min(df['Close'])).sum() == 0 and \
+        (np.array(r[-test_size:]) > np.max(df['Close']) * 2).sum() == 0:
+            accepted_results.append(r)
+    # print(len(accepted_results[0]))
+    # print(len(accepted_results))
+
+
+    accuracies = [calculate_accuracy(df['Close'].values, r[:-test_size]) for r in accepted_results]
+
+    fig = go.Figure()
+    findex = df['index'].tolist() + listRange(df.index[-1] ,test_size)
+    for no, r in enumerate(accepted_results):
+        name = 'forecast %d'%(no + 1)
+        fig.add_trace(go.Scatter(x=findex, y=r, name=name, line=dict(width=1)))
+
+    fig.add_vline(x=df.index[-1], line_width=2, line_dash="dashdot", line_color="black")
+    fig.update_layout(title='average accuracy: %.4f'%(np.mean(accuracies)))
+
+    df = pd.read_csv('./GOOG_2020_true.csv')
+    df['index'] = df.index
+    fig.add_trace(go.Scatter(x=df['index'], y=df['Close'], name='true trend', line=dict(color='black', width=2)))
+    # fig.write_image(getTime()+'.jpg', width=1920, height=1080)
+    fig.show()
+    

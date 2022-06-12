@@ -16,23 +16,6 @@ from tqdm import tqdm
 sns.set()
 tf.compat.v1.random.set_random_seed(1234)
 
-df = pd.read_csv('./GOOG-year.csv')
-
-#數據歸一化
-minmax = MinMaxScaler().fit(df.iloc[:, 4:5].astype('float32')) # Close index
-df_log = minmax.transform(df.iloc[:, 4:5].astype('float32')) # Close index
-df_log = pd.DataFrame(df_log)
-df_log.head()
-
-#Split train and test dataset
-test_size = 30
-simulation_size = 10
-
-df_train = df_log.iloc[:-test_size]
-df_test = df_log.iloc[-test_size:]
-df.shape, df_train.shape, df_test.shape
-
-#Model
 class Model:
     def __init__(
         self,
@@ -82,15 +65,6 @@ def anchor(signal, weight):
         last = smoothed_val
     return buffer
 
-num_layers = 1
-size_layer = 128
-timestamp = 5
-epoch = 300
-dropout_rate = 0.8
-future_day = test_size
-learning_rate = 0.01
-
-#Forecast
 def forecast():
     tf.reset_default_graph()
     modelnn = Model(
@@ -121,6 +95,7 @@ def forecast():
             init_value = last_state
             total_loss.append(loss)
             total_acc.append(calculate_accuracy(batch_y[:, 0], logits[:, 0]))
+        #平均計算
         pbar.set_postfix(cost = np.mean(total_loss), acc = np.mean(total_acc))
     
     future_day = test_size
@@ -171,24 +146,67 @@ def forecast():
         date_ori.append(date_ori[-1] + timedelta(days = 1))
     
     output_predict = minmax.inverse_transform(output_predict)
-    deep_future = anchor(output_predict[:, 0], 0.3)
+    deep_future = anchor(output_predict[:, 0], 0.4)
     
-    return deep_future[-test_size:]
-
-results = []
-for i in range(simulation_size):
-    print('simulation %d'%(i + 1))
-    results.append(forecast())
+    return deep_future
 
 
-accuracies = [calculate_accuracy(df['Close'].iloc[-test_size:].values, r) for r in results]
+if __name__ == '__main__':
+
+    df = pd.read_csv('./GOOG-year.csv')
+    print(df)
+
+    minmax = MinMaxScaler().fit(df.iloc[:, 4:5].astype('float32')) # Close index
+    df_log = minmax.transform(df.iloc[:, 4:5].astype('float32')) # Close index
+    df_log = pd.DataFrame(df_log)
+    df_log.head()
 
 
-plt.figure(figsize = (15, 5))
-for no, r in enumerate(results):
-    plt.plot(r, label = 'forecast %d'%(no + 1))
-plt.plot(df['Close'].iloc[-test_size:].values, label = 'true trend', c = 'black')
-plt.legend()
-plt.title('average accuracy: %.4f'%(np.mean(accuracies)))
-plt.savefig("results.png")
-plt.show()
+    simulation_size = 10
+    num_layers = 1
+    size_layer = 128
+    timestamp = 5
+    epoch = 600
+    dropout_rate = 0.8
+    test_size = 30
+    learning_rate = 0.01
+
+    df_train = df_log
+    df.shape, df_train.shape
+
+    results = []
+    for i in range(simulation_size):
+        print('simulation %d'%(i + 1))
+        results.append(forecast())
+
+    date_ori = pd.to_datetime(df.iloc[:, 0]).tolist()
+    for i in range(test_size):
+        date_ori.append(date_ori[-1] + timedelta(days = 1))
+    date_ori = pd.Series(date_ori).dt.strftime(date_format = '%Y-%m-%d').tolist()
+    date_ori[-5:]
+
+    accepted_results = []
+    for r in results:
+        if (np.array(r[-test_size:]) < np.min(df['Close'])).sum() == 0 and \
+        (np.array(r[-test_size:]) > np.max(df['Close']) * 2).sum() == 0:
+            accepted_results.append(r)
+    len(accepted_results)
+
+    accuracies = [calculate_accuracy(df['Close'].values, r[:-test_size]) for r in accepted_results]
+
+
+    plt.figure(figsize = (15, 5))
+    for no, r in enumerate(accepted_results):
+        plt.plot(r, label = 'forecast %d'%(no + 1))
+    plt.title('average accuracy: %.4f'%(np.mean(accuracies)))
+
+    plt.plot(df['Close'], label = 'true trend', c = 'black')
+    plt.legend()
+
+    plt.axvline(x=df.index[-1], linestyle='-')
+
+    x_range_future = np.arange(len(results[0]))
+    plt.xticks(x_range_future[::30], date_ori[::30])
+
+    plt.savefig('results.png')
+    # plt.show()
